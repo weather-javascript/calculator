@@ -1,0 +1,42 @@
+name: advanced_calculator
+description: 高度な数学計算機能を備えたAndroid向け電卓アプリ
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # WebView for math.js symbolic computation (CAS engine)
+  flutter_inappwebview: ^6.0.0
+
+  # Math rendering (LaTeX display)
+  flutter_math_fork: ^0.7.2
+
+  # Expression evaluation (basic arithmetic fallback)
+  math_expressions: ^2.4.0
+
+  # UI enhancements
+  google_fonts: ^6.2.1
+  flutter_animate: ^4.5.0
+
+  # State management
+  provider: ^6.1.2
+
+  # Utility
+  decimal: ^2.3.3
+  intl: ^0.19.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/mathjs_engine.html
+    - assets/mathjs_engine.js
