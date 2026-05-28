@@ -11,7 +11,6 @@ analyzer:
     unnecessary_brace_in_string_interps: ignore
     unnecessary_to_list_in_spreads: ignore
     prefer_final_fields: ignore
-    unused_element: ignore
 
 linter:
   rules:
@@ -21,7 +20,6 @@ linter:
     unnecessary_brace_in_string_interps: false
     unnecessary_to_list_in_spreads: false
     prefer_final_fields: false
-    unused_element: false
     # 必須ルール（error/warning のみ維持）
     use_key_in_widget_constructors: true
     avoid_print: true
