@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><title>MathJS CAS Engine v2</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/12.4.3/math.min.js"></script>
+</head>
+<body><script>
+// ================================================================
+//  Advanced Calculator — math.js CAS Engine v2
+//  高校数学I・A, II・B, III・C 完全対応
+// ================================================================
+const fmt=(v,p=14)=>math.format(v,{precision:p});
+const fmtN=(v,p=10)=>math.format(v,{precision:p});
+const safeEval=(expr,scope={})=>math.evaluate(expr,scope);
+
+// 1. 基本
+const basic={
+  evaluate(expr){try{return fmt(safeEval(expr));}catch(e){return'Error: '+e.message;}},
+  differentiate(expr,v='x'){try{return math.simplify(math.derivative(math.parse(expr),v)).toString();}catch(e){return'Error: '+e.message;}},
+  integrate(expr,v='x',lo,hi,steps=10000){
+    try{
+      const a=parseFloat(lo),b=parseFloat(hi),h=(b-a)/steps;
+      let s=0;const sc={};
+      for(let i=0;i<=steps;i++){sc[v]=a+i*h;const val=parseFloat(safeEval(expr,sc));s+=i===0||i===steps?val:i%2===1?4*val:2*val;}
+      return fmtN((h/3)*s);
+    }catch(e){return'Error: '+e.message;}},
+  factorial(n){try{return fmt(math.factorial(parseInt(n)));}catch(e){return'Error: '+e.message;}},
+  permutation(n,r){try{return fmt(math.permutations(parseInt(n),parseInt(r)));}catch(e){return'Error: '+e.message;}},
+  combination(n,r){try{return fmt(math.combinations(parseInt(n),parseInt(r)));}catch(e){return'Error: '+e.message;}},
+  sigma(expr,v='k',start,end){try{let s=math.bignumber(0);const sc={};for(let i=parseInt(start);i<=parseInt(end);i++){sc[v]=i;s=math.add(s,safeEval(expr,sc));}return fmt(s);}catch(e){return'Error: '+e.message;}},
+  product(expr,v='k',start,end){try{let p=math.bignumber(1);const sc={};for(let i=parseInt(start);i<=parseInt(end);i++){sc[v]=i;p=math.multiply(p,safeEval(expr,sc));}return fmt(p);}catch(e){return'Error: '+e.message;}},
+  statistics(dataStr){
+    try{
+      const data=dataStr.split(',').map(s=>parseFloat(s.trim())).filter(n=>!isNaN(n));
+      if(!data.length)return'Error: データが空';
+      const sorted=[...data].sort((a,b)=>a-b);
+      const freq={};data.forEach(v=>{freq[v]=(freq[v]||0)+1;});
+      const maxF=Math.max(...Object.values(freq));
+      const modes=Object.keys(freq).filter(k=>freq[k]===maxF).map(Number);
+      return JSON.stringify({
+        n:data.length,sum:fmtN(math.sum(data)),mean:fmtN(math.mean(data)),
+        median:fmtN(math.median(data)),mode:modes.length===data.length?'なし':modes.join(', '),
+        variance:fmtN(math.variance(data)),stdDev:fmtN(math.std(data)),
+        min:fmtN(math.min(data)),max:fmtN(math.max(data)),range:fmtN(math.max(data)-math.min(data)),
+        q1:fmtN(math.quantileSeq(sorted,0.25)),q3:fmtN(math.quantileSeq(sorted,0.75)),
+        iqr:fmtN(math.quantileSeq(sorted,0.75)-math.quantileSeq(sorted,0.25)),
+      });
+    }catch(e){return'Error: '+e.message;}},
+};
+
+// 2. 代数
+const algebra={
+  expand(expr){try{return math.simplify(expr).toString();}catch(e){return'Error: '+e.message;}},
+  factor(expr){try{const s=math.simplify(expr).toString();return`簡約形: ${s}`;}catch(e){return'Error: '+e.message;}},
+  solveEquation(lhs,rhs='0',v='x'){
+    try{
+      const expr=`(${lhs})-(${rhs})`;
+      const results=[];const tol=1e-10,maxIter=100;const found=new Set();
+      for(const x0 of[-1000,-100,-10,-1,0,1,10,100,1000]){
+        let x=x0;
+        for(let i=0;i<maxIter;i++){
+          const sc={[v]:x};
+          const fx=parseFloat(safeEval(expr,sc));
+          if(!isFinite(fx))break;
+          const dfx=parseFloat(safeEval(math.derivative(math.parse(expr),v).toString(),sc));
+          if(Math.abs(dfx)<1e-15)break;
+          const xn=x-fx/dfx;
+          if(Math.abs(xn-x)<tol){const key=xn.toFixed(6);if(!found.has(key)){found.add(key);results.push(parseFloat(xn.toFixed(8)));}break;}
+          x=xn;
+        }
+      }
+      if(!results.length)return'解なし（実数範囲）';
+      return results.sort((a,b)=>a-b).map(r=>fmtN(r)).join(', ');
+    }catch(e){return'Error: '+e.message;}},
+  quadratic(a,b,c){
+    try{
+      const A=parseFloat(a),B=parseFloat(b),C=parseFloat(c),D=B*B-4*A*C;
+      if(D>0)return`x = ${fmtN((-B+Math.sqrt(D))/(2*A))}, ${fmtN((-B-Math.sqrt(D))/(2*A))}`;
+      if(Math.abs(D)<1e-12)return`x = ${fmtN(-B/(2*A))} (重解)`;
+      return`x = ${fmtN(-B/(2*A))} ± ${fmtN(Math.sqrt(-D)/(2*A))}i (複素数解)`;
+    }catch(e){return'Error: '+e.message;}},
+  solveLinear2(a1,b1,c1,a2,b2,c2){
+    try{
+      const A=math.matrix([[parseFloat(a1),parseFloat(b1)],[parseFloat(a2),parseFloat(b2)]]);
+      const bv=math.matrix([[parseFloat(c1)],[parseFloat(c2)]]);
+      const det=math.det(A);if(Math.abs(det)<1e-12)return'解なし または 不定';
+      const x=math.multiply(math.inv(A),bv);
+      return`x = ${fmtN(x.get([0,0]))}, y = ${fmtN(x.get([1,0]))}`;
+    }catch(e){return'Error: '+e.message;}},
+};
+
+// 3. 三角関数
+const trig={
+  _toRad:(x,u)=>u==='deg'?parseFloat(x)*Math.PI/180:parseFloat(x),
+  _fromRad:(r,u)=>u==='deg'?fmtN(r*180/Math.PI):fmtN(r),
+  sin(x,u='rad'){try{return fmtN(Math.sin(this._toRad(x,u)));}catch(e){return'Error: '+e.message;}},
+  cos(x,u='rad'){try{return fmtN(Math.cos(this._toRad(x,u)));}catch(e){return'Error: '+e.message;}},
+  tan(x,u='rad'){try{const v=this._toRad(x,u);if(Math.abs(Math.cos(v))<1e-12)return'undefined';return fmtN(Math.tan(v));}catch(e){return'Error: '+e.message;}},
+  asin(x,u='rad'){try{return this._fromRad(Math.asin(parseFloat(x)),u);}catch(e){return'Error: '+e.message;}},
+  acos(x,u='rad'){try{return this._fromRad(Math.acos(parseFloat(x)),u);}catch(e){return'Error: '+e.message;}},
+  atan(x,u='rad'){try{return this._fromRad(Math.atan(parseFloat(x)),u);}catch(e){return'Error: '+e.message;}},
+  atan2(y,x,u='rad'){try{return this._fromRad(Math.atan2(parseFloat(y),parseFloat(x)),u);}catch(e){return'Error: '+e.message;}},
+  degToRad(d){return fmtN(parseFloat(d)*Math.PI/180);},
+  radToDeg(r){return fmtN(parseFloat(r)*180/Math.PI);},
+  specialValues(fn){
+    try{
+      const angles=[0,30,45,60,90,120,135,150,180,210,225,240,270,300,315,330,360];
+      return JSON.stringify(angles.map(deg=>{
+        const r=deg*Math.PI/180;
+        let val;
+        if(fn==='sin')val=Math.sin(r);
+        else if(fn==='cos')val=Math.cos(r);
+        else val=Math.abs(Math.cos(r))<1e-10?null:Math.tan(r);
+        return{deg,rad_approx:fmtN(r),val:val===null?'未定義':fmtN(val)};
+      }));
+    }catch(e){return'Error: '+e.message;}},
+};
+
+// 4. 複素数
+const complex={
+  _c:(re,im)=>math.complex(parseFloat(re),parseFloat(im)),
+  _fmt(c){
+    if(typeof c==='number')return fmtN(c);
+    const re=parseFloat(c.re||0),im=parseFloat(c.im||0);
+    if(Math.abs(im)<1e-12)return fmtN(re);
+    if(Math.abs(re)<1e-12)return`${fmtN(im)}i`;
+    return`${fmtN(re)} ${im>=0?'+':'-'} ${fmtN(Math.abs(im))}i`;
+  },
+  add(r1,i1,r2,i2){try{return this._fmt(math.add(this._c(r1,i1),this._c(r2,i2)));}catch(e){return'Error: '+e.message;}},
+  sub(r1,i1,r2,i2){try{return this._fmt(math.subtract(this._c(r1,i1),this._c(r2,i2)));}catch(e){return'Error: '+e.message;}},
+  mul(r1,i1,r2,i2){try{return this._fmt(math.multiply(this._c(r1,i1),this._c(r2,i2)));}catch(e){return'Error: '+e.message;}},
+  div(r1,i1,r2,i2){try{return this._fmt(math.divide(this._c(r1,i1),this._c(r2,i2)));}catch(e){return'Error: '+e.message;}},
+  abs(re,im){try{return fmtN(math.abs(this._c(re,im)));}catch(e){return'Error: '+e.message;}},
+  arg(re,im){try{return fmtN(math.arg(this._c(re,im)));}catch(e){return'Error: '+e.message;}},
+  conj(re,im){try{return this._fmt(math.conj(this._c(re,im)));}catch(e){return'Error: '+e.message;}},
+  pow(re,im,n){try{return this._fmt(math.pow(this._c(re,im),parseFloat(n)));}catch(e){return'Error: '+e.message;}},
+  sqrt(re,im){try{return this._fmt(math.sqrt(this._c(re,im)));}catch(e){return'Error: '+e.message;}},
+  toPolar(re,im){
+    try{
+      const c=this._c(re,im),r=math.abs(c),theta=math.arg(c);
+      return JSON.stringify({r:fmtN(r),theta_rad:fmtN(theta),theta_deg:fmtN(theta*180/Math.PI),
+        polar:`${fmtN(r)}(cos(${fmtN(theta)}) + i·sin(${fmtN(theta)}))`});
+    }catch(e){return'Error: '+e.message;}},
+  fromPolar(r,theta,unit='rad'){
+    try{
+      const t=unit==='deg'?parseFloat(theta)*Math.PI/180:parseFloat(theta),R=parseFloat(r);
+      return JSON.stringify({re:fmtN(R*Math.cos(t)),im:fmtN(R*Math.sin(t))});
+    }catch(e){return'Error: '+e.message;}},
+  evaluate(expr){
+    try{const r=safeEval(expr);return typeof r==='object'&&r.re!==undefined?this._fmt(r):fmt(r);}
+    catch(e){return'Error: '+e.message;}},
+};
+
+// 5. 極限
+const limits={
+  limit(expr,v='x',point,dir='both'){
+    try{
+      const p=point==='Infinity'?Infinity:point==='-Infinity'?-Infinity:parseFloat(point);
+      const eps=[1e-4,1e-6,1e-8,1e-10];let lastR=NaN,lastL=NaN;
+      for(const e of eps){
+        try{
+          const offset=isFinite(p)?e:1/e;
+          const r=parseFloat(safeEval(expr,{[v]:isFinite(p)?p+offset:offset}));
+          const l=parseFloat(safeEval(expr,{[v]:isFinite(p)?p-offset:-offset}));
+          if(isFinite(r)&&isFinite(l)){lastR=r;lastL=l;}
+        }catch(e){}
+      }
+      if(isNaN(lastR))return'極限値: 不定または存在しない';
+      if(dir==='right')return fmtN(lastR);
+      if(dir==='left')return fmtN(lastL);
+      if(Math.abs(lastR-lastL)<1e-6)return fmtN((lastR+lastL)/2);
+      return`左極限=${fmtN(lastL)}, 右極限=${fmtN(lastR)} → 極限値存在せず`;
+    }catch(e){return'Error: '+e.message;}},
+  lhopital(num,den,v='x',point){
+    try{
+      const dN=math.derivative(math.parse(num),v).toString();
+      const dD=math.derivative(math.parse(den),v).toString();
+      return`d(分子)/dx = ${dN}\nd(分母)/dx = ${dD}\n極限値 = ${limits.limit('('+dN+')/('+dD+')',v,point)}`;
+    }catch(e){return'Error: '+e.message;}},
+};
+
+// 6. 線形代数
+const linalg={
+  vecAdd(a,b){try{return JSON.stringify(math.add(a,b));}catch(e){return'Error: '+e.message;}},
+  vecSub(a,b){try{return JSON.stringify(math.subtract(a,b));}catch(e){return'Error: '+e.message;}},
+  vecScale(a,s){try{return JSON.stringify(math.multiply(parseFloat(s),a));}catch(e){return'Error: '+e.message;}},
+  dot(a,b){try{return fmtN(math.dot(a,b));}catch(e){return'Error: '+e.message;}},
+  cross(a,b){try{return JSON.stringify(math.cross(a,b));}catch(e){return'Error: '+e.message;}},
+  norm(a){try{return fmtN(math.norm(a));}catch(e){return'Error: '+e.message;}},
+  angle(a,b){try{const c=math.dot(a,b)/(math.norm(a)*math.norm(b));return JSON.stringify({rad:fmtN(Math.acos(c)),deg:fmtN(Math.acos(c)*180/Math.PI),cos:fmtN(c)});}catch(e){return'Error: '+e.message;}},
+  matAdd(A,B){try{return JSON.stringify(math.add(A,B));}catch(e){return'Error: '+e.message;}},
+  matSub(A,B){try{return JSON.stringify(math.subtract(A,B));}catch(e){return'Error: '+e.message;}},
+  matMul(A,B){try{return JSON.stringify(math.multiply(A,B));}catch(e){return'Error: '+e.message;}},
+  matInv(A){try{return JSON.stringify(math.inv(A));}catch(e){return'Error: '+e.message;}},
+  det(A){try{return fmtN(math.det(A));}catch(e){return'Error: '+e.message;}},
+  transpose(A){try{return JSON.stringify(math.transpose(A));}catch(e){return'Error: '+e.message;}},
+  eigenvalues(A){
+    try{
+      const r=math.eigs(A);
+      return JSON.stringify(r.values.map(v=>typeof v==='object'&&v.im!==undefined
+        ?(Math.abs(v.im)<1e-10?fmtN(v.re):`${fmtN(v.re)}+${fmtN(v.im)}i`):fmtN(v)));
+    }catch(e){return'Error: '+e.message;}},
+  solveLinear(A,b){try{return JSON.stringify(math.lusolve(A,b).map(r=>fmtN(r[0])));}catch(e){return'Error: '+e.message;}},
+};
+
+// 7. 整数論
+const numTheory={
+  primeFactorize(n){
+    try{
+      let num=Math.abs(parseInt(n));if(num<2)return num===1?'1':'0';
+      const f={};
+      for(let d=2;d*d<=num;d++)while(num%d===0){f[d]=(f[d]||0)+1;num/=d;}
+      if(num>1)f[num]=(f[num]||0)+1;
+      return Object.entries(f).map(([p,e])=>e===1?p:`${p}^${e}`).join(' × ');
+    }catch(e){return'Error: '+e.message;}},
+  gcd(a,b){try{return fmt(math.gcd(parseInt(a),parseInt(b)));}catch(e){return'Error: '+e.message;}},
+  lcm(a,b){try{return fmt(math.lcm(parseInt(a),parseInt(b)));}catch(e){return'Error: '+e.message;}},
+  isPrime(n){
+    try{
+      const num=parseInt(n);if(num<2)return'false';if(num===2)return'true';
+      if(num%2===0)return'false';for(let i=3;i*i<=num;i+=2)if(num%i===0)return'false';
+      return'true';
+    }catch(e){return'Error: '+e.message;}},
+  baseConvert(value,fromBase,toBase){
+    try{const d=parseInt(value.toString(),parseInt(fromBase));return isNaN(d)?'Error: 無効':d.toString(parseInt(toBase)).toUpperCase();}
+    catch(e){return'Error: '+e.message;}},
+  sieve(limit){
+    try{
+      const n=parseInt(limit);if(n>10000)return'Error: 上限10000';
+      const s=Array(n+1).fill(true);s[0]=s[1]=false;
+      for(let i=2;i*i<=n;i++)if(s[i])for(let j=i*i;j<=n;j+=i)s[j]=false;
+      return JSON.stringify(s.map((v,i)=>v?i:null).filter(v=>v!==null));
+    }catch(e){return'Error: '+e.message;}},
+  euclidSteps(a,b){
+    try{
+      let x=Math.abs(parseInt(a)),y=Math.abs(parseInt(b));const steps=[];
+      while(y!==0){const q=Math.floor(x/y),r=x%y;steps.push(`${x} = ${q} × ${y} + ${r}`);x=y;y=r;}
+      return JSON.stringify({gcd:x,steps});
+    }catch(e){return'Error: '+e.message;}},
+};
+
+// 8. グラフ
+const graph={
+  plotPoints(expr,xMin,xMax,points=200){
+    try{
+      const a=parseFloat(xMin),b=parseFloat(xMax),step=(b-a)/(points-1),data=[];
+      for(let i=0;i<points;i++){
+        const x=a+i*step;
+        try{const y=parseFloat(safeEval(expr,{x}));data.push(isFinite(y)?{x:parseFloat(x.toFixed(6)),y:parseFloat(y.toFixed(6))}:null);}
+        catch(e){data.push(null);}
+      }
+      return JSON.stringify(data);
+    }catch(e){return'Error: '+e.message;}},
+  plotMultiple(exprs,xMin,xMax,points=200){
+    try{return JSON.stringify(exprs.map(expr=>({expr,points:JSON.parse(graph.plotPoints(expr,xMin,xMax,points))})));}
+    catch(e){return'Error: '+e.message;}},
+};
+
+// ディスパッチャー
+window.calculate=function(requestJson){
+  try{
+    const req=JSON.parse(requestJson);let result;
+    switch(req.type){
+      case'evaluate':result=basic.evaluate(req.expr);break;
+      case'differentiate':result=basic.differentiate(req.expr,req.variable);break;
+      case'integrate':result=basic.integrate(req.expr,req.variable,req.lower,req.upper,req.steps);break;
+      case'factorial':result=basic.factorial(req.n);break;
+      case'permutation':result=basic.permutation(req.n,req.r);break;
+      case'combination':result=basic.combination(req.n,req.r);break;
+      case'sigma':result=basic.sigma(req.expr,req.variable,req.start,req.end);break;
+      case'product':result=basic.product(req.expr,req.variable,req.start,req.end);break;
+      case'statistics':result=basic.statistics(req.data);break;
+      case'expand':result=algebra.expand(req.expr);break;
+      case'factor':result=algebra.factor(req.expr);break;
+      case'solveEquation':result=algebra.solveEquation(req.lhs,req.rhs,req.variable);break;
+      case'quadratic':result=algebra.quadratic(req.a,req.b,req.c);break;
+      case'solveLinear2':result=algebra.solveLinear2(req.a1,req.b1,req.c1,req.a2,req.b2,req.c2);break;
+      case'trig_sin':result=trig.sin(req.x,req.unit);break;
+      case'trig_cos':result=trig.cos(req.x,req.unit);break;
+      case'trig_tan':result=trig.tan(req.x,req.unit);break;
+      case'trig_asin':result=trig.asin(req.x,req.unit);break;
+      case'trig_acos':result=trig.acos(req.x,req.unit);break;
+      case'trig_atan':result=trig.atan(req.x,req.unit);break;
+      case'trig_atan2':result=trig.atan2(req.y,req.x,req.unit);break;
+      case'degToRad':result=trig.degToRad(req.value);break;
+      case'radToDeg':result=trig.radToDeg(req.value);break;
+      case'trig_special':result=trig.specialValues(req.fn);break;
+      case'complex_add':result=complex.add(req.r1,req.i1,req.r2,req.i2);break;
+      case'complex_sub':result=complex.sub(req.r1,req.i1,req.r2,req.i2);break;
+      case'complex_mul':result=complex.mul(req.r1,req.i1,req.r2,req.i2);break;
+      case'complex_div':result=complex.div(req.r1,req.i1,req.r2,req.i2);break;
+      case'complex_abs':result=complex.abs(req.re,req.im);break;
+      case'complex_arg':result=complex.arg(req.re,req.im);break;
+      case'complex_conj':result=complex.conj(req.re,req.im);break;
+      case'complex_pow':result=complex.pow(req.re,req.im,req.n);break;
+      case'complex_sqrt':result=complex.sqrt(req.re,req.im);break;
+      case'complex_toPolar':result=complex.toPolar(req.re,req.im);break;
+      case'complex_fromPolar':result=complex.fromPolar(req.r,req.theta,req.unit);break;
+      case'complex_eval':result=complex.evaluate(req.expr);break;
+      case'limit':result=limits.limit(req.expr,req.variable,req.point,req.direction);break;
+      case'lhopital':result=limits.lhopital(req.numerator,req.denominator,req.variable,req.point);break;
+      case'vec_add':result=linalg.vecAdd(req.a,req.b);break;
+      case'vec_sub':result=linalg.vecSub(req.a,req.b);break;
+      case'vec_scale':result=linalg.vecScale(req.a,req.scalar);break;
+      case'dot':result=linalg.dot(req.a,req.b);break;
+      case'cross':result=linalg.cross(req.a,req.b);break;
+      case'vec_norm':result=linalg.norm(req.a);break;
+      case'vec_angle':result=linalg.angle(req.a,req.b);break;
+      case'mat_add':result=linalg.matAdd(req.A,req.B);break;
+      case'mat_sub':result=linalg.matSub(req.A,req.B);break;
+      case'mat_mul':result=linalg.matMul(req.A,req.B);break;
+      case'mat_inv':result=linalg.matInv(req.A);break;
+      case'det':result=linalg.det(req.A);break;
+      case'transpose':result=linalg.transpose(req.A);break;
+      case'eigenvalues':result=linalg.eigenvalues(req.A);break;
+      case'solve_linear':result=linalg.solveLinear(req.A,req.b);break;
+      case'prime_factorize':result=numTheory.primeFactorize(req.n);break;
+      case'gcd':result=numTheory.gcd(req.a,req.b);break;
+      case'lcm':result=numTheory.lcm(req.a,req.b);break;
+      case'is_prime':result=numTheory.isPrime(req.n);break;
+      case'base_convert':result=numTheory.baseConvert(req.value,req.fromBase,req.toBase);break;
+      case'sieve':result=numTheory.sieve(req.limit);break;
+      case'euclid_steps':result=numTheory.euclidSteps(req.a,req.b);break;
+      case'plot_points':result=graph.plotPoints(req.expr,req.xMin,req.xMax,req.points);break;
+      case'plot_multiple':result=graph.plotMultiple(req.exprs,req.xMin,req.xMax,req.points);break;
+      default:result=`Error: Unknown type: ${req.type}`;
+    }
+    return JSON.stringify({success:!result.toString().startsWith('Error'),result});
+  }catch(e){return JSON.stringify({success:false,result:'Error: '+e.message});}
+};
+window.onload=function(){if(window.flutter_inappwebview)window.flutter_inappwebview.callHandler('onEngineReady','ready');};
+</script></body></html>

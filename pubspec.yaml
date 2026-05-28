@@ -1,0 +1,41 @@
+name: advanced_calculator
+description: 高校数学（数I〜数III・C）完全対応 高度な電卓アプリ
+publish_to: 'none'
+version: 2.0.0+2
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # WebView — math.js CASエンジン実行基盤
+  flutter_inappwebview: ^6.0.0
+
+  # LaTeX数式レンダリング
+  flutter_math_fork: ^0.7.2
+
+  # 算術式評価フォールバック
+  math_expressions: ^2.4.0
+
+  # UIフォント・アニメーション
+  google_fonts: ^6.2.1
+  flutter_animate: ^4.5.0
+
+  # 状態管理
+  provider: ^6.1.2
+
+  # 数値精度
+  decimal: ^2.3.3
+  intl: ^0.19.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/mathjs_engine.html

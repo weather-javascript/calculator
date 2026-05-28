@@ -1,0 +1,357 @@
+# .github/workflows/build.yml
+# ============================================================
+#  GitHub Actions — Flutter Android APK ビルド & Artifacts保存
+#  トリガー: main/develop へのpush、PRのopen、手動実行
+# ============================================================
+
+name: Build Android APK
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    tags:
+      - 'v*.*.*'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'ビルドタイプ (debug / release)'
+        required: true
+        default: 'release'
+        type: choice
+        options:
+          - debug
+          - release
+
+# ジョブ間での同時実行を防ぐ（同一ブランチ）
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FLUTTER_VERSION: '3.22.0'
+  JAVA_VERSION: '17'
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  # ──────────────────────────────────────────────
+  #  Job 1: コード品質チェック
+  # ──────────────────────────────────────────────
+  analyze:
+    name: 静的解析 & テスト
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4.2.2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Java ${{ env.JAVA_VERSION }} をセットアップ
+        uses: actions/setup-java@v4.7.1
+        with:
+          distribution: 'zulu'
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: 'gradle'
+
+      - name: Flutter ${{ env.FLUTTER_VERSION }} をセットアップ
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+          cache-key: 'flutter-${{ env.FLUTTER_VERSION }}'
+
+      - name: 依存関係をインストール
+        run: flutter pub get
+
+      - name: Dart フォーマット自動適用
+        run: dart format .
+
+      - name: フォーマット差分をコミット（変更がある場合のみ）
+        uses: stefanzweifel/git-auto-commit-action@v5.0.1
+        with:
+          commit_message: "style: dart format auto-fix [skip ci]"
+          commit_options: '--no-verify'
+          file_pattern: '**/*.dart'
+          skip_dirty_check: false
+
+      - name: Flutter 静的解析
+        run: flutter analyze --fatal-warnings
+
+      - name: ユニットテスト実行
+        run: flutter test --coverage
+
+      - name: カバレッジレポートをアップロード
+        uses: codecov/codecov-action@v5.4.3
+        if: always()
+        with:
+          file: coverage/lcov.info
+          fail_ci_if_error: false
+
+  # ──────────────────────────────────────────────
+  #  Job 2: APK ビルド
+  # ──────────────────────────────────────────────
+  build:
+    name: APK ビルド (${{ github.event.inputs.build_type || 'release' }})
+    runs-on: ubuntu-latest
+    needs: analyze
+    timeout-minutes: 30
+
+    outputs:
+      apk_path: ${{ steps.build_apk.outputs.apk_path }}
+      version_name: ${{ steps.get_version.outputs.version_name }}
+      version_code: ${{ steps.get_version.outputs.version_code }}
+
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0  # タグ情報取得のため全履歴を取得
+
+      - name: Java ${{ env.JAVA_VERSION }} をセットアップ
+        uses: actions/setup-java@v4.7.1
+        with:
+          distribution: 'zulu'
+          java-version: ${{ env.JAVA_VERSION }}
+          cache: 'gradle'
+
+      - name: Flutter ${{ env.FLUTTER_VERSION }} をセットアップ
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: 'stable'
+          cache: true
+          cache-key: 'flutter-${{ env.FLUTTER_VERSION }}'
+
+      - name: Flutter のバージョン確認
+        run: |
+          flutter --version
+          dart --version
+
+      - name: pubspec.yaml からバージョンを取得
+        id: get_version
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | tr -d '[:space:]')
+          VERSION_NAME=$(echo $VERSION | cut -d'+' -f1)
+          VERSION_CODE=$(echo $VERSION | cut -d'+' -f2)
+          echo "version_name=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
+          echo "📦 Version: $VERSION_NAME ($VERSION_CODE)"
+
+      - name: 依存関係をインストール
+        run: flutter pub get
+
+      # ---- リリース署名設定（Secrets から keystore を復元） ----
+      # secrets は if: 条件式では使えないため、シェルスクリプト内で空チェックする
+      - name: キーストアを復元（リリースビルド時・Secrets設定済みの場合のみ）
+        if: github.event.inputs.build_type != 'debug'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 --decode > android/app/keystore.jks
+            cat > android/key.properties << EOF
+          storePassword=${KEYSTORE_PASSWORD}
+          keyPassword=${KEY_PASSWORD}
+          keyAlias=${KEY_ALIAS}
+          storeFile=keystore.jks
+          EOF
+            echo "✅ Keystore・key.properties 生成完了（署名付きビルド）"
+          else
+            echo "⚠️ KEYSTORE_BASE64 未設定 → デバッグ署名でビルドします"
+          fi
+
+      # ---- Gradle キャッシュ ----
+      - name: Gradle キャッシュを設定
+        uses: actions/cache@v4.2.3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      # ---- APK ビルド ----
+      - name: Flutter APK をビルド（デバッグ）
+        id: build_apk_debug
+        if: github.event.inputs.build_type == 'debug'
+        run: |
+          flutter build apk --debug \
+            --build-name=${{ steps.get_version.outputs.version_name }} \
+            --build-number=${{ steps.get_version.outputs.version_code }}
+          echo "apk_path=build/app/outputs/flutter-apk/app-debug.apk" >> $GITHUB_OUTPUT
+          echo "✅ Debug APK ビルド完了"
+
+      - name: Flutter APK をビルド（リリース）
+        id: build_apk_release
+        if: github.event.inputs.build_type == 'release' || github.event.inputs.build_type == ''
+        run: |
+          flutter build apk --release \
+            --build-name=${{ steps.get_version.outputs.version_name }} \
+            --build-number=${{ steps.get_version.outputs.version_code }} \
+            --split-per-abi
+          echo "apk_path=build/app/outputs/flutter-apk/" >> $GITHUB_OUTPUT
+          echo "✅ Release APK ビルド完了"
+
+      - name: APK ビルドパスを統合
+        id: build_apk
+        run: |
+          if [ "${{ github.event.inputs.build_type }}" = "debug" ]; then
+            echo "apk_path=build/app/outputs/flutter-apk/app-debug.apk" >> $GITHUB_OUTPUT
+          else
+            echo "apk_path=build/app/outputs/flutter-apk/" >> $GITHUB_OUTPUT
+          fi
+
+      # ---- APK 情報表示 ----
+      - name: ビルドされた APK の一覧
+        run: |
+          echo "📁 Generated APK files:"
+          find build/app/outputs/flutter-apk/ -name "*.apk" -exec ls -lh {} \;
+
+      # ---- Artifacts としてアップロード ----
+      - name: APK を GitHub Artifacts にアップロード
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: advanced-calculator-apk-v${{ steps.get_version.outputs.version_name }}-${{ github.run_number }}
+          path: |
+            build/app/outputs/flutter-apk/*.apk
+          retention-days: 30
+          if-no-files-found: error
+
+      # ---- ビルドサマリー ----
+      - name: ビルドサマリーを生成
+        if: always()
+        run: |
+          echo "## 📱 APK ビルドサマリー" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| 項目 | 値 |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-----|" >> $GITHUB_STEP_SUMMARY
+          echo "| アプリ名 | 高度な電卓 |" >> $GITHUB_STEP_SUMMARY
+          echo "| バージョン | ${{ steps.get_version.outputs.version_name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| ビルド番号 | ${{ steps.get_version.outputs.version_code }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| ビルドタイプ | ${{ github.event.inputs.build_type || 'release' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Flutter | ${{ env.FLUTTER_VERSION }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| ブランチ | ${{ github.ref_name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| コミット | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 生成された APK ファイル" >> $GITHUB_STEP_SUMMARY
+          find build/app/outputs/flutter-apk/ -name "*.apk" -exec sh -c \
+            'echo "- \`$(basename {})\` ($(du -h {} | cut -f1))"' \; >> $GITHUB_STEP_SUMMARY || true
+
+  # ──────────────────────────────────────────────
+  #  Job 3: GitHub Release への自動公開（タグpush時）
+  # ──────────────────────────────────────────────
+  release:
+    name: GitHub Release に公開
+    runs-on: ubuntu-latest
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    timeout-minutes: 10
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4.2.2
+
+      - name: APK を Artifacts からダウンロード
+        uses: actions/download-artifact@v4.3.0
+        with:
+          name: advanced-calculator-apk-v${{ needs.build.outputs.version_name }}-${{ github.run_number }}
+          path: ./release-apks
+
+      - name: ダウンロードした APK を確認
+        run: ls -lh ./release-apks/
+
+      - name: GitHub Release を作成して APK を添付
+        uses: softprops/action-gh-release@v2.3.2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: "高度な電卓 v${{ needs.build.outputs.version_name }}"
+          body: |
+            ## 📱 高度な電卓 v${{ needs.build.outputs.version_name }}
+
+            ### 機能一覧
+            - ✅ 四則演算（＋、－、×、÷）
+            - ✅ 応用計算（√、%、階乗）
+            - ✅ 場合の数（nPr、nCr）
+            - ✅ 解析学（記号微分・数値積分）
+            - ✅ 関数（log、ln、exp、三角関数）
+            - ✅ 数列（Σ、Π）
+            - ✅ 統計（平均・分散・標準偏差・四分位数）
+
+            ### インストール
+            1. 下記から端末に合わせた APK をダウンロード
+               - `arm64-v8a`: 最新の 64bit Android 端末（推奨）
+               - `armeabi-v7a`: 古い 32bit Android 端末
+               - `x86_64`: Android エミュレーター用
+            2. 設定 → セキュリティ → 「提供元不明のアプリ」を許可
+            3. APK をタップしてインストール
+
+            ### 変更履歴
+            ${{ github.event.head_commit.message }}
+
+            ---
+            Built with Flutter ${{ env.FLUTTER_VERSION }} on ${{ github.run_id }}
+          files: |
+            ./release-apks/*.apk
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ──────────────────────────────────────────────
+  #  Job 4: PR へのコメント通知
+  # ──────────────────────────────────────────────
+  notify_pr:
+    name: PR にビルド結果をコメント
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.event_name == 'pull_request'
+    timeout-minutes: 5
+
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: PR にコメントを投稿
+        uses: actions/github-script@v7.0.1
+        with:
+          script: |
+            const versionName = '${{ needs.build.outputs.version_name }}';
+            const runNumber = '${{ github.run_number }}';
+            const artifactName = `advanced-calculator-apk-v${versionName}-${runNumber}`;
+
+            const comment = `## ✅ APK ビルド成功
+
+            | 項目 | 値 |
+            |------|-----|
+            | バージョン | ${versionName} |
+            | ビルド番号 | ${runNumber} |
+            | Flutter | ${{ env.FLUTTER_VERSION }} |
+
+            📦 **Artifacts**: [${artifactName}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+
+            > Actions タブの Artifacts セクションから APK をダウンロードできます（保存期間: 30日）`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });

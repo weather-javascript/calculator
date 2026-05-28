@@ -1,0 +1,27 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  errors:
+    # info レベルは警告扱いにしない（ビルド失敗させない）
+    deprecated_member_use: warning
+    unused_import: warning
+    unused_field: warning
+    prefer_const_constructors: ignore
+    prefer_const_declarations: ignore
+    unnecessary_brace_in_string_interps: ignore
+    unnecessary_to_list_in_spreads: ignore
+    prefer_final_fields: ignore
+    unused_element: ignore
+
+linter:
+  rules:
+    # info レベルのルール — CIでエラーにしない
+    prefer_const_constructors: false
+    prefer_const_declarations: false
+    unnecessary_brace_in_string_interps: false
+    unnecessary_to_list_in_spreads: false
+    prefer_final_fields: false
+    unused_element: false
+    # 必須ルール（error/warning のみ維持）
+    use_key_in_widget_constructors: true
+    avoid_print: true
