@@ -34,16 +34,16 @@ class CalculatorState extends ChangeNotifier {
   String _activeField = 'field1';
 
   String get displayExpression => _displayExpression;
-  String get displayResult     => _displayResult;
-  bool   get hasError          => _hasError;
-  bool   get isCalculating     => _isCalculating;
-  CalcMode get mode            => _mode;
+  String get displayResult => _displayResult;
+  bool get hasError => _hasError;
+  bool get isCalculating => _isCalculating;
+  CalcMode get mode => _mode;
   List<HistoryEntry> get history => List.unmodifiable(_history);
-  String get field1            => _field1;
-  String get field2            => _field2;
-  String get field3            => _field3;
-  String get field4            => _field4;
-  String get activeField       => _activeField;
+  String get field1 => _field1;
+  String get field2 => _field2;
+  String get field3 => _field3;
+  String get field4 => _field4;
+  String get activeField => _activeField;
 
   void setMode(CalcMode mode) {
     _mode = mode;
@@ -58,11 +58,20 @@ class CalculatorState extends ChangeNotifier {
 
   void appendToActive(String value) {
     switch (_activeField) {
-      case 'field1': _field1 += value; break;
-      case 'field2': _field2 += value; break;
-      case 'field3': _field3 += value; break;
-      case 'field4': _field4 += value; break;
-      default: _inputBuffer += value;
+      case 'field1':
+        _field1 += value;
+        break;
+      case 'field2':
+        _field2 += value;
+        break;
+      case 'field3':
+        _field3 += value;
+        break;
+      case 'field4':
+        _field4 += value;
+        break;
+      default:
+        _inputBuffer += value;
     }
     _syncDisplay();
     notifyListeners();
@@ -104,11 +113,25 @@ class CalculatorState extends ChangeNotifier {
   void backspace() {
     if (_activeField != 'field1' && _activeField != '') {
       switch (_activeField) {
-        case 'field2': if (_field2.isNotEmpty) { _field2 = _field2.substring(0, _field2.length - 1); } break;
-        case 'field3': if (_field3.isNotEmpty) { _field3 = _field3.substring(0, _field3.length - 1); } break;
-        case 'field4': if (_field4.isNotEmpty) { _field4 = _field4.substring(0, _field4.length - 1); } break;
+        case 'field2':
+          if (_field2.isNotEmpty) {
+            _field2 = _field2.substring(0, _field2.length - 1);
+          }
+          break;
+        case 'field3':
+          if (_field3.isNotEmpty) {
+            _field3 = _field3.substring(0, _field3.length - 1);
+          }
+          break;
+        case 'field4':
+          if (_field4.isNotEmpty) {
+            _field4 = _field4.substring(0, _field4.length - 1);
+          }
+          break;
         default:
-          if (_field1.isNotEmpty) { _field1 = _field1.substring(0, _field1.length - 1); }
+          if (_field1.isNotEmpty) {
+            _field1 = _field1.substring(0, _field1.length - 1);
+          }
       }
     } else {
       if (_inputBuffer.isNotEmpty) {
@@ -132,10 +155,18 @@ class CalculatorState extends ChangeNotifier {
 
   void clearEntry() {
     switch (_activeField) {
-      case 'field2': _field2 = ''; break;
-      case 'field3': _field3 = ''; break;
-      case 'field4': _field4 = ''; break;
-      default: _field1 = ''; _inputBuffer = '';
+      case 'field2':
+        _field2 = '';
+        break;
+      case 'field3':
+        _field3 = '';
+        break;
+      case 'field4':
+        _field4 = '';
+        break;
+      default:
+        _field1 = '';
+        _inputBuffer = '';
     }
     _displayExpression = _inputBuffer;
     notifyListeners();
@@ -178,9 +209,13 @@ class CalculatorState extends ChangeNotifier {
   }
 
   void _addHistory(String expression, String result) {
-    _history.insert(0, HistoryEntry(
-      expression: expression, result: result,
-      mode: _mode, timestamp: DateTime.now()));
+    _history.insert(
+        0,
+        HistoryEntry(
+            expression: expression,
+            result: result,
+            mode: _mode,
+            timestamp: DateTime.now()));
     if (_history.length > 100) _history.removeRange(100, _history.length);
   }
 

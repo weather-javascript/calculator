@@ -30,30 +30,41 @@ class InputField extends StatelessWidget {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: isActive ? color.withOpacity(0.08) : AppTheme.surfaceCard,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isActive ? color.withOpacity(0.6) : AppTheme.borderColor,
-            width: isActive ? 1.5 : 1)),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min, children: [
-          Text(label, style: TextStyle(
-            fontFamily: 'Space Grotesk', fontSize: 10, fontWeight: FontWeight.w600,
-            color: isActive ? color : AppTheme.textMuted, letterSpacing: 0.8)),
-          const SizedBox(height: 4),
-          Row(children: [
-            Expanded(child: Text(
-              value.isEmpty ? placeholder : value,
-              style: TextStyle(
-                fontFamily: 'IBM Plex Mono', fontSize: 16, fontWeight: FontWeight.w500,
-                color: value.isEmpty ? AppTheme.textMuted : AppTheme.textPrimary),
-              maxLines: 1, overflow: TextOverflow.ellipsis)),
-            if (isActive) ...[
-              const SizedBox(width: 4),
-              _CursorBlink(color: color),
-            ],
-          ]),
-        ]),
+            color: isActive ? color.withOpacity(0.08) : AppTheme.surfaceCard,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+                color: isActive ? color.withOpacity(0.6) : AppTheme.borderColor,
+                width: isActive ? 1.5 : 1)),
+        child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(label,
+                  style: TextStyle(
+                      fontFamily: 'Space Grotesk',
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: isActive ? color : AppTheme.textMuted,
+                      letterSpacing: 0.8)),
+              const SizedBox(height: 4),
+              Row(children: [
+                Expanded(
+                    child: Text(value.isEmpty ? placeholder : value,
+                        style: TextStyle(
+                            fontFamily: 'IBM Plex Mono',
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: value.isEmpty
+                                ? AppTheme.textMuted
+                                : AppTheme.textPrimary),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis)),
+                if (isActive) ...[
+                  const SizedBox(width: 4),
+                  _CursorBlink(color: color),
+                ],
+              ]),
+            ]),
       ),
     );
   }
@@ -62,7 +73,8 @@ class InputField extends StatelessWidget {
 class _CursorBlink extends StatefulWidget {
   final Color color;
   const _CursorBlink({required this.color});
-  @override State<_CursorBlink> createState() => _CursorBlinkState();
+  @override
+  State<_CursorBlink> createState() => _CursorBlinkState();
 }
 
 class _CursorBlinkState extends State<_CursorBlink>
@@ -78,10 +90,13 @@ class _CursorBlinkState extends State<_CursorBlink>
   }
 
   @override
-  void dispose() { _ctrl.dispose(); super.dispose(); }
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) => FadeTransition(
-    opacity: _ctrl,
-    child: Container(width: 2, height: 18, color: widget.color));
+      opacity: _ctrl,
+      child: Container(width: 2, height: 18, color: widget.color));
 }

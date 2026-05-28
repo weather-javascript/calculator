@@ -31,7 +31,8 @@ class AlgebraKeyboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isNumericOnly = mode == AlgebraTab.quadratic || mode == AlgebraTab.linear2;
+    final isNumericOnly =
+        mode == AlgebraTab.quadratic || mode == AlgebraTab.linear2;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Column(children: [
@@ -85,9 +86,9 @@ class AlgebraKeyboard extends StatelessWidget {
   }
 
   Widget _row(List<Widget> children) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Row(children: children.map((w) => w).toList()),
-  );
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Row(children: children.map((w) => w).toList()),
+      );
 
   Widget _key(String label, _Style style, VoidCallback onTap,
       {bool loading = false, int flex = 1}) {
@@ -96,8 +97,11 @@ class AlgebraKeyboard extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4),
         child: _CalcKey(
-          label: label, style: style, onTap: onTap,
-          loading: loading, accentColor: accentColor,
+          label: label,
+          style: style,
+          onTap: onTap,
+          loading: loading,
+          accentColor: accentColor,
         ),
       ),
     );
@@ -112,48 +116,78 @@ class _CalcKey extends StatefulWidget {
   final VoidCallback onTap;
   final bool loading;
   final Color accentColor;
-  const _CalcKey({required this.label, required this.style,
-    required this.onTap, required this.loading, required this.accentColor});
-  @override State<_CalcKey> createState() => _CalcKeyState();
+  const _CalcKey(
+      {required this.label,
+      required this.style,
+      required this.onTap,
+      required this.loading,
+      required this.accentColor});
+  @override
+  State<_CalcKey> createState() => _CalcKeyState();
 }
 
-class _CalcKeyState extends State<_CalcKey> with SingleTickerProviderStateMixin {
+class _CalcKeyState extends State<_CalcKey>
+    with SingleTickerProviderStateMixin {
   late AnimationController _ctrl;
   late Animation<double> _scale;
   @override
   void initState() {
     super.initState();
-    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 80));
-    _scale = Tween(begin: 1.0, end: 0.93).animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
+    _ctrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 80));
+    _scale = Tween(begin: 1.0, end: 0.93)
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
   }
-  @override void dispose() { _ctrl.dispose(); super.dispose(); }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   Color get _bg {
     switch (widget.style) {
-      case _Style.num:     return AppTheme.btnNumber;
-      case _Style.op:      return AppTheme.btnOperator;
-      case _Style.fn:      return AppTheme.btnFunction;
-      case _Style.special: return AppTheme.btnSpecial;
-      case _Style.clear:   return AppTheme.btnClear;
-      case _Style.action:  return widget.accentColor.withOpacity(0.85);
+      case _Style.num:
+        return AppTheme.btnNumber;
+      case _Style.op:
+        return AppTheme.btnOperator;
+      case _Style.fn:
+        return AppTheme.btnFunction;
+      case _Style.special:
+        return AppTheme.btnSpecial;
+      case _Style.clear:
+        return AppTheme.btnClear;
+      case _Style.action:
+        return widget.accentColor.withOpacity(0.85);
     }
   }
 
   Color get _fg {
     switch (widget.style) {
-      case _Style.op:      return AppTheme.accentCyan;
-      case _Style.special: return const Color(0xFFE9D5FF);
-      case _Style.clear:   return const Color(0xFFFFCDD2);
-      case _Style.fn:      return AppTheme.accentOrange;
-      default:             return AppTheme.textPrimary;
+      case _Style.op:
+        return AppTheme.accentCyan;
+      case _Style.special:
+        return const Color(0xFFE9D5FF);
+      case _Style.clear:
+        return const Color(0xFFFFCDD2);
+      case _Style.fn:
+        return AppTheme.accentOrange;
+      default:
+        return AppTheme.textPrimary;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTapDown: (_) { HapticFeedback.lightImpact(); _ctrl.forward(); },
-      onTapUp: (_) { _ctrl.reverse(); widget.onTap(); },
+      onTapDown: (_) {
+        HapticFeedback.lightImpact();
+        _ctrl.forward();
+      },
+      onTapUp: (_) {
+        _ctrl.reverse();
+        widget.onTap();
+      },
       onTapCancel: () => _ctrl.reverse(),
       child: ScaleTransition(
         scale: _scale,
@@ -163,18 +197,29 @@ class _CalcKeyState extends State<_CalcKey> with SingleTickerProviderStateMixin 
             color: _bg,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(color: AppTheme.borderColor.withOpacity(0.4)),
-            boxShadow: [BoxShadow(
-              color: Colors.black.withOpacity(0.25),
-              offset: const Offset(0, 2), blurRadius: 4,
-            )],
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.25),
+                offset: const Offset(0, 2),
+                blurRadius: 4,
+              )
+            ],
           ),
-          child: Center(child: widget.loading
-            ? SizedBox(width: 18, height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation(AppTheme.textPrimary)))
-            : Text(widget.label, style: TextStyle(
-                fontFamily: 'IBM Plex Mono', fontSize: 18,
-                fontWeight: FontWeight.w600, color: _fg))),
+          child: Center(
+              child: widget.loading
+                  ? SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor:
+                              AlwaysStoppedAnimation(AppTheme.textPrimary)))
+                  : Text(widget.label,
+                      style: TextStyle(
+                          fontFamily: 'IBM Plex Mono',
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: _fg))),
         ),
       ),
     );

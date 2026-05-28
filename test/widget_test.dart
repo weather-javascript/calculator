@@ -15,15 +15,19 @@ void main() {
       expect(s.hasError, false);
     });
     test('数字入力', () {
-      s.inputDigit('1'); s.inputDigit('2');
+      s.inputDigit('1');
+      s.inputDigit('2');
       expect(s.currentExpression, '12');
     });
     test('クリア', () {
-      s.inputDigit('9'); s.clearAll();
+      s.inputDigit('9');
+      s.clearAll();
       expect(s.currentExpression, '');
     });
     test('バックスペース', () {
-      s.inputDigit('1'); s.inputDigit('2'); s.backspace();
+      s.inputDigit('1');
+      s.inputDigit('2');
+      s.backspace();
       expect(s.currentExpression, '1');
     });
     test('履歴', () {
@@ -41,16 +45,20 @@ void main() {
     test('×→*', () => expect(MathEngineService.preprocess('3×4'), '3*4'));
     test('÷→/', () => expect(MathEngineService.preprocess('8÷2'), '8/2'));
     test('−→-', () => expect(MathEngineService.preprocess('5−3'), '5-3'));
-    test('√→sqrt', () => expect(MathEngineService.preprocess('√(9)'), 'sqrt(9)'));
+    test('√→sqrt',
+        () => expect(MathEngineService.preprocess('√(9)'), 'sqrt(9)'));
     test('π→pi', () => expect(MathEngineService.preprocess('2π'), '2pi'));
-    test('log→log10', () => expect(MathEngineService.preprocess('log(100)'), 'log10(100)'));
-    test('ln→log', () => expect(MathEngineService.preprocess('ln(e)'), 'log(e)'));
+    test('log→log10',
+        () => expect(MathEngineService.preprocess('log(100)'), 'log10(100)'));
+    test('ln→log',
+        () => expect(MathEngineService.preprocess('ln(e)'), 'log(e)'));
   });
 
   group('MathEngineService.formatNum', () {
     test('末尾ゼロ除去', () => expect(MathEngineService.formatNum('3.500'), '3.5'));
     test('整数化', () => expect(MathEngineService.formatNum('4.000'), '4'));
-    test('科学記数そのまま', () => expect(MathEngineService.formatNum('1.2e10'), '1.2e10'));
+    test('科学記数そのまま',
+        () => expect(MathEngineService.formatNum('1.2e10'), '1.2e10'));
   });
 
   group('AppModes', () {

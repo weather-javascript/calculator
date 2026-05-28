@@ -11,7 +11,8 @@ enum AlgebraTab { expand, factor, quadratic, linear2, equation }
 
 class AlgebraScreen extends StatefulWidget {
   const AlgebraScreen({super.key});
-  @override State<AlgebraScreen> createState() => _AlgebraScreenState();
+  @override
+  State<AlgebraScreen> createState() => _AlgebraScreenState();
 }
 
 class _AlgebraScreenState extends State<AlgebraScreen>
@@ -21,9 +22,18 @@ class _AlgebraScreenState extends State<AlgebraScreen>
 
   // input fields
   final Map<String, String> _fields = {
-    'main': '', 'a': '', 'b': '', 'c': '',
-    'a1': '', 'b1': '', 'c1': '', 'a2': '', 'b2': '', 'c2': '',
-    'lhs': '', 'rhs': '',
+    'main': '',
+    'a': '',
+    'b': '',
+    'c': '',
+    'a1': '',
+    'b1': '',
+    'c1': '',
+    'a2': '',
+    'b2': '',
+    'c2': '',
+    'lhs': '',
+    'rhs': '',
   };
   String _activeField = 'main';
   String _result = '';
@@ -47,28 +57,40 @@ class _AlgebraScreenState extends State<AlgebraScreen>
   }
 
   @override
-  void dispose() { _tab.dispose(); super.dispose(); }
+  void dispose() {
+    _tab.dispose();
+    super.dispose();
+  }
 
-  void _append(String v) => setState(() => _fields[_activeField] = (_fields[_activeField]! + v));
+  void _append(String v) =>
+      setState(() => _fields[_activeField] = (_fields[_activeField]! + v));
   void _backspace() => setState(() {
-    final cur = _fields[_activeField]!;
-    if (cur.isNotEmpty) {
-      _fields[_activeField] = cur.substring(0, cur.length - 1);
-    }
-  });
-  void _clearAll() => setState(() { _fields.updateAll((_, __) => ''); _result = ''; });
+        final cur = _fields[_activeField]!;
+        if (cur.isNotEmpty) {
+          _fields[_activeField] = cur.substring(0, cur.length - 1);
+        }
+      });
+  void _clearAll() => setState(() {
+        _fields.updateAll((_, __) => '');
+        _result = '';
+      });
 
   Future<void> _calculate() async {
     final engine = MathEngineService();
-    setState(() { _loading = true; _result = ''; });
+    setState(() {
+      _loading = true;
+      _result = '';
+    });
     MathResult res;
 
     switch (_current) {
       case AlgebraTab.expand:
-        res = await engine.expand(MathEngineService.preprocess(_fields['main']!));
+        res =
+            await engine.expand(MathEngineService.preprocess(_fields['main']!));
         break;
       case AlgebraTab.factor:
-        res = await engine.factor(MathEngineService.preprocess(_fields['main']!));
+        res =
+            await engine.factor(MathEngineService.preprocess(_fields['main']!));
         break;
       case AlgebraTab.quadratic:
         final a = double.tryParse(_fields['a']!) ?? 0;
@@ -78,19 +100,28 @@ class _AlgebraScreenState extends State<AlgebraScreen>
         break;
       case AlgebraTab.linear2:
         res = await engine.solveLinear2(
-          double.tryParse(_fields['a1']!) ?? 0, double.tryParse(_fields['b1']!) ?? 0,
-          double.tryParse(_fields['c1']!) ?? 0, double.tryParse(_fields['a2']!) ?? 0,
-          double.tryParse(_fields['b2']!) ?? 0, double.tryParse(_fields['c2']!) ?? 0,
+          double.tryParse(_fields['a1']!) ?? 0,
+          double.tryParse(_fields['b1']!) ?? 0,
+          double.tryParse(_fields['c1']!) ?? 0,
+          double.tryParse(_fields['a2']!) ?? 0,
+          double.tryParse(_fields['b2']!) ?? 0,
+          double.tryParse(_fields['c2']!) ?? 0,
         );
         break;
       case AlgebraTab.equation:
         res = await engine.solveEquation(
           MathEngineService.preprocess(_fields['lhs']!),
-          rhs: _fields['rhs']!.isEmpty ? '0' : MathEngineService.preprocess(_fields['rhs']!),
+          rhs: _fields['rhs']!.isEmpty
+              ? '0'
+              : MathEngineService.preprocess(_fields['rhs']!),
         );
         break;
     }
-    setState(() { _loading = false; _result = res.result; _isError = !res.success; });
+    setState(() {
+      _loading = false;
+      _result = res.result;
+      _isError = !res.success;
+    });
   }
 
   @override
@@ -104,10 +135,10 @@ class _AlgebraScreenState extends State<AlgebraScreen>
         child: _buildInputPanel(),
       ),
       // 結果表示
-      if (_result.isNotEmpty || _loading)
-        _buildResult(),
+      if (_result.isNotEmpty || _loading) _buildResult(),
       // キーボード
-      Expanded(child: AlgebraKeyboard(
+      Expanded(
+          child: AlgebraKeyboard(
         onAppend: _append,
         onBackspace: _backspace,
         onClear: _clearAll,
@@ -141,14 +172,18 @@ class _AlgebraScreenState extends State<AlgebraScreen>
                 color: active ? _color.withOpacity(0.15) : AppTheme.surfaceCard,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: active ? _color.withOpacity(0.6) : AppTheme.borderColor,
+                  color:
+                      active ? _color.withOpacity(0.6) : AppTheme.borderColor,
                   width: active ? 1.5 : 1,
                 ),
               ),
-              child: Text(labels[i], style: TextStyle(
-                fontFamily: 'Space Grotesk', fontSize: 12, fontWeight: FontWeight.w600,
-                color: active ? _color : AppTheme.textMuted,
-              )),
+              child: Text(labels[i],
+                  style: TextStyle(
+                    fontFamily: 'Space Grotesk',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: active ? _color : AppTheme.textMuted,
+                  )),
             ),
           );
         },
@@ -186,16 +221,23 @@ class _AlgebraScreenState extends State<AlgebraScreen>
           ),
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label, style: TextStyle(
-            fontFamily: 'Space Grotesk', fontSize: 10, fontWeight: FontWeight.w600,
-            color: active ? _color : AppTheme.textMuted, letterSpacing: 0.8,
-          )),
+          Text(label,
+              style: TextStyle(
+                fontFamily: 'Space Grotesk',
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                color: active ? _color : AppTheme.textMuted,
+                letterSpacing: 0.8,
+              )),
           const SizedBox(height: 4),
           Text(_fields[key]!.isEmpty ? placeholder : _fields[key]!,
-            style: TextStyle(
-              fontFamily: 'IBM Plex Mono', fontSize: 16,
-              color: _fields[key]!.isEmpty ? AppTheme.textMuted : AppTheme.textPrimary,
-            )),
+              style: TextStyle(
+                fontFamily: 'IBM Plex Mono',
+                fontSize: 16,
+                color: _fields[key]!.isEmpty
+                    ? AppTheme.textMuted
+                    : AppTheme.textPrimary,
+              )),
         ]),
       ),
     );
@@ -203,14 +245,20 @@ class _AlgebraScreenState extends State<AlgebraScreen>
 
   Widget _quadraticFields() {
     return Column(children: [
-      Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: _color.withOpacity(0.06), borderRadius: BorderRadius.circular(10),
+          color: _color.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(color: _color.withOpacity(0.2)),
         ),
-        child: const Text('ax² + bx + c = 0', style: TextStyle(
-          fontFamily: 'IBM Plex Mono', fontSize: 15, color: AppTheme.textSecondary,
-        ), textAlign: TextAlign.center),
+        child: const Text('ax² + bx + c = 0',
+            style: TextStyle(
+              fontFamily: 'IBM Plex Mono',
+              fontSize: 15,
+              color: AppTheme.textSecondary,
+            ),
+            textAlign: TextAlign.center),
       ),
       const SizedBox(height: 8),
       Row(children: [
@@ -225,13 +273,19 @@ class _AlgebraScreenState extends State<AlgebraScreen>
 
   Widget _linear2Fields() {
     return Column(children: [
-      Container(padding: const EdgeInsets.all(8),
+      Container(
+        padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: _color.withOpacity(0.06), borderRadius: BorderRadius.circular(10),
+          color: _color.withOpacity(0.06),
+          borderRadius: BorderRadius.circular(10),
         ),
-        child: const Text('a₁x + b₁y = c₁\na₂x + b₂y = c₂', style: TextStyle(
-          fontFamily: 'IBM Plex Mono', fontSize: 13, color: AppTheme.textSecondary,
-        ), textAlign: TextAlign.center),
+        child: const Text('a₁x + b₁y = c₁\na₂x + b₂y = c₂',
+            style: TextStyle(
+              fontFamily: 'IBM Plex Mono',
+              fontSize: 13,
+              color: AppTheme.textSecondary,
+            ),
+            textAlign: TextAlign.center),
       ),
       const SizedBox(height: 8),
       Row(children: [
@@ -257,9 +311,12 @@ class _AlgebraScreenState extends State<AlgebraScreen>
       Expanded(child: _miniField('左辺 f(x)', 'lhs', 'x^2-4')),
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 10),
-        child: Text('=', style: TextStyle(
-          fontFamily: 'IBM Plex Mono', fontSize: 20, color: _color,
-        )),
+        child: Text('=',
+            style: TextStyle(
+              fontFamily: 'IBM Plex Mono',
+              fontSize: 20,
+              color: _color,
+            )),
       ),
       Expanded(child: _miniField('右辺 g(x)', 'rhs', '0')),
     ]);
@@ -281,13 +338,21 @@ class _AlgebraScreenState extends State<AlgebraScreen>
           ),
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label, style: TextStyle(fontSize: 10,
-            fontFamily: 'Space Grotesk', color: active ? _color : AppTheme.textMuted)),
+          Text(label,
+              style: TextStyle(
+                  fontSize: 10,
+                  fontFamily: 'Space Grotesk',
+                  color: active ? _color : AppTheme.textMuted)),
           const SizedBox(height: 2),
           Text(_fields[key]!.isEmpty ? placeholder : _fields[key]!,
-            style: TextStyle(fontSize: 14, fontFamily: 'IBM Plex Mono',
-              color: _fields[key]!.isEmpty ? AppTheme.textMuted : AppTheme.textPrimary),
-            maxLines: 1, overflow: TextOverflow.ellipsis),
+              style: TextStyle(
+                  fontSize: 14,
+                  fontFamily: 'IBM Plex Mono',
+                  color: _fields[key]!.isEmpty
+                      ? AppTheme.textMuted
+                      : AppTheme.textPrimary),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis),
         ]),
       ),
     );
@@ -301,20 +366,30 @@ class _AlgebraScreenState extends State<AlgebraScreen>
         width: double.infinity,
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: _isError ? AppTheme.accentRed.withOpacity(0.08) : _color.withOpacity(0.08),
+          color: _isError
+              ? AppTheme.accentRed.withOpacity(0.08)
+              : _color.withOpacity(0.08),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: _isError ? AppTheme.accentRed.withOpacity(0.3) : _color.withOpacity(0.3),
+            color: _isError
+                ? AppTheme.accentRed.withOpacity(0.3)
+                : _color.withOpacity(0.3),
           ),
         ),
         child: _loading
-            ? Center(child: SizedBox(width: 20, height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation(_color))))
-            : SelectableText(_result, style: TextStyle(
-                fontFamily: 'IBM Plex Mono', fontSize: 16,
-                color: _isError ? AppTheme.accentRed : AppTheme.textPrimary,
-              )),
+            ? Center(
+                child: SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation(_color))))
+            : SelectableText(_result,
+                style: TextStyle(
+                  fontFamily: 'IBM Plex Mono',
+                  fontSize: 16,
+                  color: _isError ? AppTheme.accentRed : AppTheme.textPrimary,
+                )),
       ),
     );
   }

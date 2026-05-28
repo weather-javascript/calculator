@@ -12,12 +12,22 @@ class MathResult {
   const MathResult({required this.success, required this.result});
   factory MathResult.fromJson(Map<String, dynamic> j) =>
       MathResult(success: j['success'] as bool, result: j['result'].toString());
-  factory MathResult.error(String msg) => MathResult(success: false, result: msg);
+  factory MathResult.error(String msg) =>
+      MathResult(success: false, result: msg);
   Map<String, dynamic>? get json {
-    try { return jsonDecode(result) as Map<String, dynamic>; } catch (_) { return null; }
+    try {
+      return jsonDecode(result) as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
   }
+
   List<dynamic>? get jsonList {
-    try { return jsonDecode(result) as List<dynamic>; } catch (_) { return null; }
+    try {
+      return jsonDecode(result) as List<dynamic>;
+    } catch (_) {
+      return null;
+    }
   }
 }
 
@@ -30,7 +40,9 @@ class MathEngineService extends ChangeNotifier {
   bool _ready = false;
   bool get isReady => _ready;
 
-  void setController(InAppWebViewController c) { _ctrl = c; }
+  void setController(InAppWebViewController c) {
+    _ctrl = c;
+  }
 
   void onEngineReady() {
     _ready = true;
@@ -43,7 +55,8 @@ class MathEngineService extends ChangeNotifier {
       final js = 'calculate(${jsonEncode(jsonEncode(req))})';
       final raw = await _ctrl!.evaluateJavascript(source: js);
       if (raw == null) return MathResult.error('結果なし');
-      return MathResult.fromJson(jsonDecode(raw.toString()) as Map<String, dynamic>);
+      return MathResult.fromJson(
+          jsonDecode(raw.toString()) as Map<String, dynamic>);
     } catch (e) {
       return MathResult.error('実行エラー: $e');
     }
@@ -58,8 +71,14 @@ class MathEngineService extends ChangeNotifier {
 
   Future<MathResult> integrateNumerical(String expr, double lo, double hi,
           {String v = 'x', int steps = 10000}) =>
-      _call({'type': 'integrate', 'expr': expr, 'variable': v,
-             'lower': lo, 'upper': hi, 'steps': steps});
+      _call({
+        'type': 'integrate',
+        'expr': expr,
+        'variable': v,
+        'lower': lo,
+        'upper': hi,
+        'steps': steps
+      });
 
   Future<MathResult> factorial(int n) => _call({'type': 'factorial', 'n': n});
   Future<MathResult> permutation(int n, int r) =>
@@ -68,10 +87,23 @@ class MathEngineService extends ChangeNotifier {
       _call({'type': 'combination', 'n': n, 'r': r});
 
   Future<MathResult> sigma(String expr, int start, int end, {String v = 'k'}) =>
-      _call({'type': 'sigma', 'expr': expr, 'variable': v, 'start': start, 'end': end});
+      _call({
+        'type': 'sigma',
+        'expr': expr,
+        'variable': v,
+        'start': start,
+        'end': end
+      });
 
-  Future<MathResult> product(String expr, int start, int end, {String v = 'k'}) =>
-      _call({'type': 'product', 'expr': expr, 'variable': v, 'start': start, 'end': end});
+  Future<MathResult> product(String expr, int start, int end,
+          {String v = 'k'}) =>
+      _call({
+        'type': 'product',
+        'expr': expr,
+        'variable': v,
+        'start': start,
+        'end': end
+      });
 
   Future<MathResult> statistics(String csv) =>
       _call({'type': 'statistics', 'data': csv});
@@ -83,18 +115,30 @@ class MathEngineService extends ChangeNotifier {
   Future<MathResult> factor(String expr) =>
       _call({'type': 'factor', 'expr': expr});
 
-  Future<MathResult> solveEquation(String lhs, {String rhs = '0', String v = 'x'}) =>
+  Future<MathResult> solveEquation(String lhs,
+          {String rhs = '0', String v = 'x'}) =>
       _call({'type': 'solveEquation', 'lhs': lhs, 'rhs': rhs, 'variable': v});
 
   Future<MathResult> quadratic(double a, double b, double c) =>
       _call({'type': 'quadratic', 'a': a, 'b': b, 'c': c});
 
   Future<MathResult> solveLinear2(
-    double a1, double b1, double c1,
-    double a2, double b2, double c2,
-  ) => _call({'type': 'solveLinear2',
-              'a1': a1, 'b1': b1, 'c1': c1,
-              'a2': a2, 'b2': b2, 'c2': c2});
+    double a1,
+    double b1,
+    double c1,
+    double a2,
+    double b2,
+    double c2,
+  ) =>
+      _call({
+        'type': 'solveLinear2',
+        'a1': a1,
+        'b1': b1,
+        'c1': c1,
+        'a2': a2,
+        'b2': b2,
+        'c2': c2
+      });
 
   // ─── 三角関数 ─────────────────────────────────────────
   Future<MathResult> trigSin(String x, {String unit = 'rad'}) =>
@@ -139,21 +183,33 @@ class MathEngineService extends ChangeNotifier {
       _call({'type': 'complex_sqrt', 're': re, 'im': im});
   Future<MathResult> complexToPolar(double re, double im) =>
       _call({'type': 'complex_toPolar', 're': re, 'im': im});
-  Future<MathResult> complexFromPolar(double r, double theta, {String unit = 'rad'}) =>
-      _call({'type': 'complex_fromPolar', 'r': r, 'theta': theta, 'unit': unit});
+  Future<MathResult> complexFromPolar(double r, double theta,
+          {String unit = 'rad'}) =>
+      _call(
+          {'type': 'complex_fromPolar', 'r': r, 'theta': theta, 'unit': unit});
   Future<MathResult> complexEval(String expr) =>
       _call({'type': 'complex_eval', 'expr': expr});
 
   // ─── 極限 ────────────────────────────────────────────
   Future<MathResult> limit(String expr, String point,
           {String v = 'x', String direction = 'both'}) =>
-      _call({'type': 'limit', 'expr': expr, 'variable': v,
-             'point': point, 'direction': direction});
+      _call({
+        'type': 'limit',
+        'expr': expr,
+        'variable': v,
+        'point': point,
+        'direction': direction
+      });
 
   Future<MathResult> lhopital(String num, String den, String point,
           {String v = 'x'}) =>
-      _call({'type': 'lhopital', 'numerator': num,
-             'denominator': den, 'variable': v, 'point': point});
+      _call({
+        'type': 'lhopital',
+        'numerator': num,
+        'denominator': den,
+        'variable': v,
+        'point': point
+      });
 
   // ─── 線形代数 ────────────────────────────────────────
   Future<MathResult> vecAdd(List<double> a, List<double> b) =>
@@ -185,8 +241,14 @@ class MathEngineService extends ChangeNotifier {
   Future<MathResult> eigenvalues(List<List<double>> A) =>
       _call({'type': 'eigenvalues', 'A': A});
   Future<MathResult> solveLinearSystem(
-    List<List<double>> A, List<double> b,
-  ) => _call({'type': 'solve_linear', 'A': A, 'b': b.map((v) => [v]).toList()});
+    List<List<double>> A,
+    List<double> b,
+  ) =>
+      _call({
+        'type': 'solve_linear',
+        'A': A,
+        'b': b.map((v) => [v]).toList()
+      });
 
   // ─── 整数論 ──────────────────────────────────────────
   Future<MathResult> primeFactorize(int n) =>
@@ -195,11 +257,14 @@ class MathEngineService extends ChangeNotifier {
       _call({'type': 'gcd', 'a': a, 'b': b});
   Future<MathResult> lcm(int a, int b) =>
       _call({'type': 'lcm', 'a': a, 'b': b});
-  Future<MathResult> isPrime(int n) =>
-      _call({'type': 'is_prime', 'n': n});
+  Future<MathResult> isPrime(int n) => _call({'type': 'is_prime', 'n': n});
   Future<MathResult> baseConvert(String value, int fromBase, int toBase) =>
-      _call({'type': 'base_convert', 'value': value,
-             'fromBase': fromBase, 'toBase': toBase});
+      _call({
+        'type': 'base_convert',
+        'value': value,
+        'fromBase': fromBase,
+        'toBase': toBase
+      });
   Future<MathResult> sieve(int limit) =>
       _call({'type': 'sieve', 'limit': limit});
   Future<MathResult> euclidSteps(int a, int b) =>
@@ -208,19 +273,32 @@ class MathEngineService extends ChangeNotifier {
   // ─── グラフ ──────────────────────────────────────────
   Future<MathResult> plotPoints(String expr, double xMin, double xMax,
           {int points = 200}) =>
-      _call({'type': 'plot_points', 'expr': expr,
-             'xMin': xMin, 'xMax': xMax, 'points': points});
+      _call({
+        'type': 'plot_points',
+        'expr': expr,
+        'xMin': xMin,
+        'xMax': xMax,
+        'points': points
+      });
 
   Future<MathResult> plotMultiple(List<String> exprs, double xMin, double xMax,
           {int points = 200}) =>
-      _call({'type': 'plot_multiple', 'exprs': exprs,
-             'xMin': xMin, 'xMax': xMax, 'points': points});
+      _call({
+        'type': 'plot_multiple',
+        'exprs': exprs,
+        'xMin': xMin,
+        'xMax': xMax,
+        'points': points
+      });
 
   // ─── ユーティリティ ──────────────────────────────────
   static String preprocess(String input) => input
-      .replaceAll('×', '*').replaceAll('÷', '/')
-      .replaceAll('−', '-').replaceAll('√(', 'sqrt(')
-      .replaceAll('π', 'pi').replaceAll('log(', 'log10(')
+      .replaceAll('×', '*')
+      .replaceAll('÷', '/')
+      .replaceAll('−', '-')
+      .replaceAll('√(', 'sqrt(')
+      .replaceAll('π', 'pi')
+      .replaceAll('log(', 'log10(')
       .replaceAll('ln(', 'log(');
 
   static String formatNum(String result) {
